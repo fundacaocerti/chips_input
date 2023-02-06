@@ -495,6 +495,7 @@ class ChipsInputState<T extends Object> extends State<ChipsInput<T>>
   List<T> get chips => _chips;
   set chips(List<T> newValues) => setState(() {
         _chips = newValues.toSet().toList();
+        _effectiveController.text = _effectiveController.text;
       });
 
   final space = '\u200B'; //'\u200B'; // '*';
@@ -561,16 +562,7 @@ class ChipsInputState<T extends Object> extends State<ChipsInput<T>>
   void addChip(T newValue) {
     setState(() {
       _chips = [..._chips, newValue];
-    });
-    widget.onChanged?.call(_chips.toList(growable: false));
-  }
-
-  void _deleteLastChips(int numKeepChips) {
-    if (numKeepChips < 0) {
-      numKeepChips = 0;
-    }
-    setState(() {
-      _chips = _chips.take(numKeepChips).toList();
+      _effectiveController.text = _effectiveController.text;
     });
     widget.onChanged?.call(_chips.toList(growable: false));
   }
@@ -579,9 +571,7 @@ class ChipsInputState<T extends Object> extends State<ChipsInput<T>>
     if (widget.enabled == null || widget.enabled!) {
       setState(() {
         _chips = _chips..remove(data);
-        _effectiveController.text = _effectiveController.text.substring(1);
-        _effectiveController.selection = TextSelection.fromPosition(
-            TextPosition(offset: _effectiveController.text.length));
+        _effectiveController.text = _effectiveController.text;
       });
       widget.onChanged?.call(_chips.toList(growable: false));
     }
@@ -625,9 +615,6 @@ class ChipsInputState<T extends Object> extends State<ChipsInput<T>>
         focusNode: focusNode,
         textEditingController: controller,
         optionsBuilder: (TextEditingValue textEditingValue) async {
-          if (textEditingValue.text.length < _chips.length) {
-            _deleteLastChips(textEditingValue.text.length);
-          }
           final options = await widget
               .findSuggestions(textEditingValue.text.replaceAll("$space", ""));
           final notUsedOptions =
