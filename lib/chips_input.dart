@@ -52,6 +52,7 @@ class ChipsInput<T extends Object> extends StatefulWidget {
     this.maxLength,
     this.onChanged,
     this.onEditingComplete,
+    this.addOnPressedEnter = false,
     this.onAppPrivateCommand,
     this.inputFormatters,
     this.enabled,
@@ -307,6 +308,9 @@ class ChipsInput<T extends Object> extends StatefulWidget {
   ///  * [onEditingComplete], [onSubmitted]:
   ///    which are more specialized input change notifications.
   final ValueChanged<List<T>>? onChanged;
+
+  /// Whether to add the first suggestion when the user presses enter key.
+  final bool addOnPressedEnter;
 
   /// {@macro flutter.widgets.editableText.onEditingComplete}
   final VoidCallback? onEditingComplete;
@@ -577,6 +581,18 @@ class ChipsInputState<T extends Object> extends State<ChipsInput<T>>
     }
   }
 
+  void _onPressedEnter(String text) async {
+    final options = await widget.findSuggestions(text.replaceAll("$space", ""));
+    final notUsedOptions =
+        options.where((r) => !_chips.contains(r)).toList(growable: false);
+
+    if (notUsedOptions.isNotEmpty) {
+      _effectiveController.text = '';
+      _effectiveFocusNode.requestFocus();
+      addChip(notUsedOptions.first);
+    }
+  }
+
   @override
   void dispose() {
     _focusNode?.dispose();
@@ -666,6 +682,7 @@ class ChipsInputState<T extends Object> extends State<ChipsInput<T>>
                 smartQuotesType: widget.smartQuotesType,
                 minLines: widget.minLines,
                 onEditingComplete: widget.onEditingComplete,
+                onSubmitted: widget.addOnPressedEnter ? _onPressedEnter : null,
                 onAppPrivateCommand: widget.onAppPrivateCommand,
                 inputFormatters: widget.inputFormatters,
                 selectionHeightStyle: widget.selectionHeightStyle,
@@ -685,7 +702,7 @@ class ChipsInputState<T extends Object> extends State<ChipsInput<T>>
                     isDense: true,
                     contentPadding: EdgeInsets.symmetric(vertical: 5)),
               ),
-            )
+            ),
           ];
           return GestureDetector(
             behavior: HitTestBehavior.opaque,
@@ -696,7 +713,8 @@ class ChipsInputState<T extends Object> extends State<ChipsInput<T>>
               animation: Listenable.merge(<Listenable>[focusNode, controller]),
               builder: (context, child) => InputDecorator(
                 isFocused: focusNode.hasFocus,
-                isEmpty: textEditingController.value.text.isEmpty,
+                isEmpty:
+                    textEditingController.value.text.isEmpty && _chips.isEmpty,
                 decoration: widget.decoration ?? InputDecoration(),
                 expands: widget.expands,
                 child: child,
@@ -704,6 +722,7 @@ class ChipsInputState<T extends Object> extends State<ChipsInput<T>>
               child: Wrap(
                 spacing: 4,
                 runSpacing: 4,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: chipsAndTextField,
               ),
             ),
