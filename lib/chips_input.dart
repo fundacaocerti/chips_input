@@ -581,6 +581,16 @@ class ChipsInputState<T extends Object> extends State<ChipsInput<T>>
     }
   }
 
+  void deleteLastChip() {
+    if (widget.enabled == null || widget.enabled!) {
+      setState(() {
+        _chips.removeLast();
+        _effectiveController.text = _effectiveController.text;
+      });
+      widget.onChanged?.call(_chips.toList(growable: false));
+    }
+  }
+
   void _onPressedEnter(String text) async {
     final options = await widget.findSuggestions(text.replaceAll("$space", ""));
     final notUsedOptions =
@@ -590,6 +600,19 @@ class ChipsInputState<T extends Object> extends State<ChipsInput<T>>
       _effectiveController.text = '';
       _effectiveFocusNode.requestFocus();
       addChip(notUsedOptions.first);
+    }
+  }
+
+  void _onKeyPressed(RawKeyEvent keyEvent) {
+    if (keyEvent.runtimeType == RawKeyDownEvent) {
+      LogicalKeyboardKey logicalKey = keyEvent.logicalKey;
+
+      if ([LogicalKeyboardKey.backspace, LogicalKeyboardKey.delete]
+          .contains(logicalKey)) {
+        if (_effectiveController.text.isEmpty && chips.isNotEmpty) {
+          deleteLastChip();
+        }
+      }
     }
   }
 
@@ -650,57 +673,62 @@ class ChipsInputState<T extends Object> extends State<ChipsInput<T>>
           List<Widget> chipsAndTextField = [
             ...chipwidgets,
             IntrinsicWidth(
-              child: TextField(
-                controller: textEditingController,
-                focusNode: focusNode,
-                onTap: widget.onTap,
-                style: style,
-                maxLength: maxReached ? _chips.length : widget.maxLength,
-                maxLengthEnforcement: widget.maxLengthEnforcement,
-                maxLines: widget.maxLines,
-                enabled: widget.enabled,
-                keyboardType: widget.keyboardType,
-                keyboardAppearance: widget.keyboardAppearance,
-                textInputAction: widget.textInputAction,
-                textCapitalization: widget.textCapitalization,
-                strutStyle: widget.strutStyle,
-                textAlign: widget.textAlign,
-                textAlignVertical: widget.textAlignVertical,
-                textDirection: widget.textDirection,
-                readOnly: widget.readOnly,
-                toolbarOptions: widget.toolbarOptions,
-                showCursor: widget.showCursor,
-                cursorWidth: widget.cursorWidth,
-                cursorHeight: widget.cursorHeight,
-                cursorRadius: widget.cursorRadius,
-                cursorColor: widget.cursorColor,
-                autofocus: widget.autofocus,
-                obscuringCharacter: widget.obscuringCharacter,
-                obscureText: widget.obscureText,
-                autocorrect: widget.autocorrect,
-                smartDashesType: widget.smartDashesType,
-                smartQuotesType: widget.smartQuotesType,
-                minLines: widget.minLines,
-                onEditingComplete: widget.onEditingComplete,
-                onSubmitted: widget.addOnPressedEnter ? _onPressedEnter : null,
-                onAppPrivateCommand: widget.onAppPrivateCommand,
-                inputFormatters: widget.inputFormatters,
-                selectionHeightStyle: widget.selectionHeightStyle,
-                selectionWidthStyle: widget.selectionWidthStyle,
-                scrollPadding: widget.scrollPadding,
-                scrollController: widget.scrollController,
-                scrollPhysics: widget.scrollPhysics,
-                dragStartBehavior: widget.dragStartBehavior,
-                enableInteractiveSelection: widget.enableInteractiveSelection,
-                selectionControls: widget.selectionControls,
-                mouseCursor: widget.mouseCursor,
-                buildCounter: widget.buildCounter,
-                decoration: InputDecoration(
-                    border: InputBorder.none,
-                    hintText: widget.decoration?.hintText,
-                    counterText: "",
-                    isDense: true,
-                    contentPadding: EdgeInsets.symmetric(vertical: 5)),
+              child: RawKeyboardListener(
+                focusNode: FocusNode(),
+                onKey: _onKeyPressed,
+                child: TextField(
+                  controller: textEditingController,
+                  focusNode: focusNode,
+                  onTap: widget.onTap,
+                  style: style,
+                  maxLength: maxReached ? _chips.length : widget.maxLength,
+                  maxLengthEnforcement: widget.maxLengthEnforcement,
+                  maxLines: widget.maxLines,
+                  enabled: widget.enabled,
+                  keyboardType: widget.keyboardType,
+                  keyboardAppearance: widget.keyboardAppearance,
+                  textInputAction: widget.textInputAction,
+                  textCapitalization: widget.textCapitalization,
+                  strutStyle: widget.strutStyle,
+                  textAlign: widget.textAlign,
+                  textAlignVertical: widget.textAlignVertical,
+                  textDirection: widget.textDirection,
+                  readOnly: widget.readOnly,
+                  toolbarOptions: widget.toolbarOptions,
+                  showCursor: widget.showCursor,
+                  cursorWidth: widget.cursorWidth,
+                  cursorHeight: widget.cursorHeight,
+                  cursorRadius: widget.cursorRadius,
+                  cursorColor: widget.cursorColor,
+                  autofocus: widget.autofocus,
+                  obscuringCharacter: widget.obscuringCharacter,
+                  obscureText: widget.obscureText,
+                  autocorrect: widget.autocorrect,
+                  smartDashesType: widget.smartDashesType,
+                  smartQuotesType: widget.smartQuotesType,
+                  minLines: widget.minLines,
+                  onEditingComplete: widget.onEditingComplete,
+                  onSubmitted:
+                      widget.addOnPressedEnter ? _onPressedEnter : null,
+                  onAppPrivateCommand: widget.onAppPrivateCommand,
+                  inputFormatters: widget.inputFormatters,
+                  selectionHeightStyle: widget.selectionHeightStyle,
+                  selectionWidthStyle: widget.selectionWidthStyle,
+                  scrollPadding: widget.scrollPadding,
+                  scrollController: widget.scrollController,
+                  scrollPhysics: widget.scrollPhysics,
+                  dragStartBehavior: widget.dragStartBehavior,
+                  enableInteractiveSelection: widget.enableInteractiveSelection,
+                  selectionControls: widget.selectionControls,
+                  mouseCursor: widget.mouseCursor,
+                  buildCounter: widget.buildCounter,
+                  decoration: InputDecoration(
+                      border: InputBorder.none,
+                      hintText: widget.decoration?.hintText,
+                      counterText: "",
+                      isDense: true,
+                      contentPadding: EdgeInsets.symmetric(vertical: 5)),
+                ),
               ),
             ),
           ];
