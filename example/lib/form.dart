@@ -117,6 +117,7 @@ class _ChipsFormInputState extends State<ChipsFormInput> {
       builder: (fieldState) {
         return ChipsInput<String>(
           key: _chipsKey,
+          addOnPressedEnter: true,
           onChanged: fieldState.didChange,
           chipBuilder: chipBuilder,
           suggestionBuilder: suggestionBuilder,

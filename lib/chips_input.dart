@@ -52,6 +52,7 @@ class ChipsInput<T extends Object> extends StatefulWidget {
     this.maxLength,
     this.onChanged,
     this.onEditingComplete,
+    this.addOnPressedEnter = false,
     this.onAppPrivateCommand,
     this.inputFormatters,
     this.enabled,
@@ -308,6 +309,9 @@ class ChipsInput<T extends Object> extends StatefulWidget {
   ///    which are more specialized input change notifications.
   final ValueChanged<List<T>>? onChanged;
 
+  /// Whether to add the first suggestion when the user presses enter key.
+  final bool addOnPressedEnter;
+
   /// {@macro flutter.widgets.editableText.onEditingComplete}
   final VoidCallback? onEditingComplete;
 
@@ -498,7 +502,6 @@ class ChipsInputState<T extends Object> extends State<ChipsInput<T>>
         _effectiveController.text = _effectiveController.text;
       });
 
-  final space = '\u200B'; //'\u200B'; // '*';
   FocusNode? _focusNode;
   FocusNode get _effectiveFocusNode =>
       widget.focusNode ?? (_focusNode ??= FocusNode());
@@ -508,11 +511,10 @@ class ChipsInputState<T extends Object> extends State<ChipsInput<T>>
   void initState() {
     super.initState();
     _chips.addAll(widget.initialValue);
-    String chipSpaces = _chips.map((e) => "$space").join();
     if (widget.controller == null) {
-      _createLocalController(TextEditingValue(text: chipSpaces));
+      _createLocalController(TextEditingValue(text: ''));
     } else {
-      _effectiveController.text = "$chipSpaces${_effectiveController.text}";
+      _effectiveController.text = '';
     }
     _effectiveFocusNode.canRequestFocus = _isEnabled;
   }
@@ -562,7 +564,8 @@ class ChipsInputState<T extends Object> extends State<ChipsInput<T>>
   void addChip(T newValue) {
     setState(() {
       _chips = [..._chips, newValue];
-      _effectiveController.text = _effectiveController.text;
+      _effectiveController.text = ' ';
+      _effectiveController.text = '';
     });
     widget.onChanged?.call(_chips.toList(growable: false));
   }
@@ -571,9 +574,42 @@ class ChipsInputState<T extends Object> extends State<ChipsInput<T>>
     if (widget.enabled == null || widget.enabled!) {
       setState(() {
         _chips = _chips..remove(data);
-        _effectiveController.text = _effectiveController.text;
       });
       widget.onChanged?.call(_chips.toList(growable: false));
+    }
+  }
+
+  void deleteLastChip() {
+    if (widget.enabled == null || widget.enabled!) {
+      setState(() {
+        _chips.removeLast();
+      });
+      widget.onChanged?.call(_chips.toList(growable: false));
+    }
+  }
+
+  void _onPressedEnter(String text) async {
+    final options = await widget.findSuggestions(text);
+    final notUsedOptions =
+        options.where((r) => !_chips.contains(r)).toList(growable: false);
+
+    if (notUsedOptions.isNotEmpty) {
+      _effectiveController.text = '';
+      _effectiveFocusNode.requestFocus();
+      addChip(notUsedOptions.first);
+    }
+  }
+
+  void _onKeyPressed(RawKeyEvent keyEvent) {
+    if (keyEvent.runtimeType == RawKeyDownEvent) {
+      LogicalKeyboardKey logicalKey = keyEvent.logicalKey;
+
+      if ([LogicalKeyboardKey.backspace, LogicalKeyboardKey.delete]
+          .contains(logicalKey)) {
+        if (_effectiveController.text.isEmpty && chips.isNotEmpty) {
+          deleteLastChip();
+        }
+      }
     }
   }
 
@@ -615,18 +651,13 @@ class ChipsInputState<T extends Object> extends State<ChipsInput<T>>
         focusNode: focusNode,
         textEditingController: controller,
         optionsBuilder: (TextEditingValue textEditingValue) async {
-          final options = await widget
-              .findSuggestions(textEditingValue.text.replaceAll("$space", ""));
+          final options = await widget.findSuggestions(textEditingValue.text);
           final notUsedOptions =
               options.where((r) => !_chips.contains(r)).toList(growable: false);
           return notUsedOptions;
         },
-        onSelected: (T option) {
-          addChip(option);
-        },
-        displayStringForOption: (T option) {
-          return [..._chips.map((e) => "$space"), "$space"].join();
-        },
+        onSelected: (T option) => addChip(option),
+        displayStringForOption: (T option) => '',
         fieldViewBuilder: (BuildContext context,
             TextEditingController textEditingController,
             FocusNode focusNode,
@@ -634,58 +665,64 @@ class ChipsInputState<T extends Object> extends State<ChipsInput<T>>
           List<Widget> chipsAndTextField = [
             ...chipwidgets,
             IntrinsicWidth(
-              child: TextField(
-                controller: textEditingController,
-                focusNode: focusNode,
-                onTap: widget.onTap,
-                style: style,
-                maxLength: maxReached ? _chips.length : widget.maxLength,
-                maxLengthEnforcement: widget.maxLengthEnforcement,
-                maxLines: widget.maxLines,
-                enabled: widget.enabled,
-                keyboardType: widget.keyboardType,
-                keyboardAppearance: widget.keyboardAppearance,
-                textInputAction: widget.textInputAction,
-                textCapitalization: widget.textCapitalization,
-                strutStyle: widget.strutStyle,
-                textAlign: widget.textAlign,
-                textAlignVertical: widget.textAlignVertical,
-                textDirection: widget.textDirection,
-                readOnly: widget.readOnly,
-                toolbarOptions: widget.toolbarOptions,
-                showCursor: widget.showCursor,
-                cursorWidth: widget.cursorWidth,
-                cursorHeight: widget.cursorHeight,
-                cursorRadius: widget.cursorRadius,
-                cursorColor: widget.cursorColor,
-                autofocus: widget.autofocus,
-                obscuringCharacter: widget.obscuringCharacter,
-                obscureText: widget.obscureText,
-                autocorrect: widget.autocorrect,
-                smartDashesType: widget.smartDashesType,
-                smartQuotesType: widget.smartQuotesType,
-                minLines: widget.minLines,
-                onEditingComplete: widget.onEditingComplete,
-                onAppPrivateCommand: widget.onAppPrivateCommand,
-                inputFormatters: widget.inputFormatters,
-                selectionHeightStyle: widget.selectionHeightStyle,
-                selectionWidthStyle: widget.selectionWidthStyle,
-                scrollPadding: widget.scrollPadding,
-                scrollController: widget.scrollController,
-                scrollPhysics: widget.scrollPhysics,
-                dragStartBehavior: widget.dragStartBehavior,
-                enableInteractiveSelection: widget.enableInteractiveSelection,
-                selectionControls: widget.selectionControls,
-                mouseCursor: widget.mouseCursor,
-                buildCounter: widget.buildCounter,
-                decoration: InputDecoration(
-                    border: InputBorder.none,
-                    hintText: widget.decoration?.hintText,
-                    counterText: "",
-                    isDense: true,
-                    contentPadding: EdgeInsets.symmetric(vertical: 5)),
+              child: RawKeyboardListener(
+                focusNode: FocusNode(),
+                onKey: _onKeyPressed,
+                child: TextField(
+                  controller: textEditingController,
+                  focusNode: focusNode,
+                  onTap: widget.onTap,
+                  style: style,
+                  maxLength: maxReached ? _chips.length : widget.maxLength,
+                  maxLengthEnforcement: widget.maxLengthEnforcement,
+                  maxLines: widget.maxLines,
+                  enabled: widget.enabled,
+                  keyboardType: widget.keyboardType,
+                  keyboardAppearance: widget.keyboardAppearance,
+                  textInputAction: widget.textInputAction,
+                  textCapitalization: widget.textCapitalization,
+                  strutStyle: widget.strutStyle,
+                  textAlign: widget.textAlign,
+                  textAlignVertical: widget.textAlignVertical,
+                  textDirection: widget.textDirection,
+                  readOnly: widget.readOnly,
+                  toolbarOptions: widget.toolbarOptions,
+                  showCursor: widget.showCursor,
+                  cursorWidth: widget.cursorWidth,
+                  cursorHeight: widget.cursorHeight,
+                  cursorRadius: widget.cursorRadius,
+                  cursorColor: widget.cursorColor,
+                  autofocus: widget.autofocus,
+                  obscuringCharacter: widget.obscuringCharacter,
+                  obscureText: widget.obscureText,
+                  autocorrect: widget.autocorrect,
+                  smartDashesType: widget.smartDashesType,
+                  smartQuotesType: widget.smartQuotesType,
+                  minLines: widget.minLines,
+                  onEditingComplete: widget.onEditingComplete,
+                  onSubmitted:
+                      widget.addOnPressedEnter ? _onPressedEnter : null,
+                  onAppPrivateCommand: widget.onAppPrivateCommand,
+                  inputFormatters: widget.inputFormatters,
+                  selectionHeightStyle: widget.selectionHeightStyle,
+                  selectionWidthStyle: widget.selectionWidthStyle,
+                  scrollPadding: widget.scrollPadding,
+                  scrollController: widget.scrollController,
+                  scrollPhysics: widget.scrollPhysics,
+                  dragStartBehavior: widget.dragStartBehavior,
+                  enableInteractiveSelection: widget.enableInteractiveSelection,
+                  selectionControls: widget.selectionControls,
+                  mouseCursor: widget.mouseCursor,
+                  buildCounter: widget.buildCounter,
+                  decoration: InputDecoration(
+                      border: InputBorder.none,
+                      hintText: widget.decoration?.hintText,
+                      counterText: "",
+                      isDense: true,
+                      contentPadding: EdgeInsets.symmetric(vertical: 5)),
+                ),
               ),
-            )
+            ),
           ];
           return GestureDetector(
             behavior: HitTestBehavior.opaque,
@@ -696,7 +733,8 @@ class ChipsInputState<T extends Object> extends State<ChipsInput<T>>
               animation: Listenable.merge(<Listenable>[focusNode, controller]),
               builder: (context, child) => InputDecorator(
                 isFocused: focusNode.hasFocus,
-                isEmpty: textEditingController.value.text.isEmpty,
+                isEmpty:
+                    textEditingController.value.text.isEmpty && _chips.isEmpty,
                 decoration: widget.decoration ?? InputDecoration(),
                 expands: widget.expands,
                 child: child,
@@ -704,6 +742,7 @@ class ChipsInputState<T extends Object> extends State<ChipsInput<T>>
               child: Wrap(
                 spacing: 4,
                 runSpacing: 4,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: chipsAndTextField,
               ),
             ),
