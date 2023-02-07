@@ -492,6 +492,12 @@ class ChipsInputState<T extends Object> extends State<ChipsInput<T>>
       widget.controller ?? _controller!.value;
 
   List<T> _chips = [];
+  List<T> get chips => _chips;
+  set chips(List<T> newValues) => setState(() {
+        _chips = newValues.toSet().toList();
+        _effectiveController.text = _effectiveController.text;
+      });
+
   final space = '\u200B'; //'\u200B'; // '*';
   FocusNode? _focusNode;
   FocusNode get _effectiveFocusNode =>
@@ -553,35 +559,21 @@ class ChipsInputState<T extends Object> extends State<ChipsInput<T>>
     registerForRestoration(_controller!, 'controller');
   }
 
-  void _addChip(T newValue) {
+  void addChip(T newValue) {
     setState(() {
       _chips = [..._chips, newValue];
+      _effectiveController.text = _effectiveController.text;
     });
-    if (widget.onChanged != null)
-      widget.onChanged!(_chips.toList(growable: false));
-  }
-
-  void _deleteLastChips(int numKeepChips) {
-    if (numKeepChips < 0) {
-      numKeepChips = 0;
-    }
-    setState(() {
-      _chips = _chips.take(numKeepChips).toList();
-    });
-    if (widget.onChanged != null)
-      widget.onChanged!(_chips.toList(growable: false));
+    widget.onChanged?.call(_chips.toList(growable: false));
   }
 
   void deleteChip(T data) {
     if (widget.enabled == null || widget.enabled!) {
       setState(() {
         _chips = _chips..remove(data);
-        _effectiveController.text = _effectiveController.text.substring(1);
-        _effectiveController.selection = TextSelection.fromPosition(
-            TextPosition(offset: _effectiveController.text.length));
+        _effectiveController.text = _effectiveController.text;
       });
-      if (widget.onChanged != null)
-        widget.onChanged!(_chips.toList(growable: false));
+      widget.onChanged?.call(_chips.toList(growable: false));
     }
   }
 
@@ -623,16 +615,14 @@ class ChipsInputState<T extends Object> extends State<ChipsInput<T>>
         focusNode: focusNode,
         textEditingController: controller,
         optionsBuilder: (TextEditingValue textEditingValue) async {
-          if (textEditingValue.text.length < _chips.length) {
-            _deleteLastChips(textEditingValue.text.length);
-          }
-          final options = await widget.findSuggestions(textEditingValue.text.replaceAll("$space", ""));
+          final options = await widget
+              .findSuggestions(textEditingValue.text.replaceAll("$space", ""));
           final notUsedOptions =
               options.where((r) => !_chips.contains(r)).toList(growable: false);
           return notUsedOptions;
         },
         onSelected: (T option) {
-          _addChip(option);
+          addChip(option);
         },
         displayStringForOption: (T option) {
           return [..._chips.map((e) => "$space"), "$space"].join();
