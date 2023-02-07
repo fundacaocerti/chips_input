@@ -502,7 +502,6 @@ class ChipsInputState<T extends Object> extends State<ChipsInput<T>>
         _effectiveController.text = _effectiveController.text;
       });
 
-  final space = '\u200B'; //'\u200B'; // '*';
   FocusNode? _focusNode;
   FocusNode get _effectiveFocusNode =>
       widget.focusNode ?? (_focusNode ??= FocusNode());
@@ -512,11 +511,10 @@ class ChipsInputState<T extends Object> extends State<ChipsInput<T>>
   void initState() {
     super.initState();
     _chips.addAll(widget.initialValue);
-    String chipSpaces = _chips.map((e) => "$space").join();
     if (widget.controller == null) {
-      _createLocalController(TextEditingValue(text: chipSpaces));
+      _createLocalController(TextEditingValue(text: ''));
     } else {
-      _effectiveController.text = "$chipSpaces${_effectiveController.text}";
+      _effectiveController.text = '';
     }
     _effectiveFocusNode.canRequestFocus = _isEnabled;
   }
@@ -566,7 +564,8 @@ class ChipsInputState<T extends Object> extends State<ChipsInput<T>>
   void addChip(T newValue) {
     setState(() {
       _chips = [..._chips, newValue];
-      _effectiveController.text = _effectiveController.text;
+      _effectiveController.text = ' ';
+      _effectiveController.text = '';
     });
     widget.onChanged?.call(_chips.toList(growable: false));
   }
@@ -575,7 +574,6 @@ class ChipsInputState<T extends Object> extends State<ChipsInput<T>>
     if (widget.enabled == null || widget.enabled!) {
       setState(() {
         _chips = _chips..remove(data);
-        _effectiveController.text = _effectiveController.text;
       });
       widget.onChanged?.call(_chips.toList(growable: false));
     }
@@ -585,14 +583,13 @@ class ChipsInputState<T extends Object> extends State<ChipsInput<T>>
     if (widget.enabled == null || widget.enabled!) {
       setState(() {
         _chips.removeLast();
-        _effectiveController.text = _effectiveController.text;
       });
       widget.onChanged?.call(_chips.toList(growable: false));
     }
   }
 
   void _onPressedEnter(String text) async {
-    final options = await widget.findSuggestions(text.replaceAll("$space", ""));
+    final options = await widget.findSuggestions(text);
     final notUsedOptions =
         options.where((r) => !_chips.contains(r)).toList(growable: false);
 
@@ -654,18 +651,13 @@ class ChipsInputState<T extends Object> extends State<ChipsInput<T>>
         focusNode: focusNode,
         textEditingController: controller,
         optionsBuilder: (TextEditingValue textEditingValue) async {
-          final options = await widget
-              .findSuggestions(textEditingValue.text.replaceAll("$space", ""));
+          final options = await widget.findSuggestions(textEditingValue.text);
           final notUsedOptions =
               options.where((r) => !_chips.contains(r)).toList(growable: false);
           return notUsedOptions;
         },
-        onSelected: (T option) {
-          addChip(option);
-        },
-        displayStringForOption: (T option) {
-          return [..._chips.map((e) => "$space"), "$space"].join();
-        },
+        onSelected: (T option) => addChip(option),
+        displayStringForOption: (T option) => '',
         fieldViewBuilder: (BuildContext context,
             TextEditingController textEditingController,
             FocusNode focusNode,
